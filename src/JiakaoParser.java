@@ -10,17 +10,21 @@ import java.net.URL;
 public class JiakaoParser {
 
     public static void main(String[] args) {
-
-        new JiakaoParser();
+//        new JiakaoParser(dataSubject1Json,subject1DistDirName);
+        new JiakaoParser(dataSubject4Json, subject4DistDirName);
     }
 
-    private static String distDirName = "subject1";
+    private static String subject1DistDirName = "subject1";
+    private static String subject4DistDirName = "subject4";
     private static String imagesDirName = "images";
+    private static String videosDirName = "videos";
     private static String questionsFileName = "questions.json";
+    private static String dataSubject1Json = "DataSubject1.json";
+    private static String dataSubject4Json = "DataSubject4.json";
 
-    public JiakaoParser() {
+    public JiakaoParser(String dataJsonFile, String distDirName) {
 
-        File data = new File("data.json");
+        File data = new File(dataJsonFile);
         try {
             FileInputStream fis = new FileInputStream(data);
             byte[] bytes = new byte[fis.available()];
@@ -31,56 +35,76 @@ public class JiakaoParser {
             String jsonString = new String(bytes, "UTF-8");
             JSONObject jsonObject = new JSONObject(jsonString);
 
-            generateSubject1Package(jsonObject);
+            generateSubject1Package(jsonObject, distDirName);
         } catch (IOException e) {
             e.printStackTrace();
         }
     }
 
-    private void generateSubject1Package(JSONObject jsonObject) {
+    private byte[] buffer = new byte[2048];
 
-        File distDir = new File(distDirName);
-        if (!distDir.exists()) {
-            distDir.mkdirs();
+    private boolean downloadFile(String url, File dist) {
+        InputStream imageStream = null;
+        try {
+            System.out.println("Start download " + url);
+
+            imageStream = new URL(url).openStream();
+
+            if (!dist.exists()) {
+                dist.createNewFile();
+            }
+            FileOutputStream fos = new FileOutputStream(dist);
+            int size = -1;
+            while ((size = imageStream.read(buffer)) != -1) {
+                fos.write(buffer, 0, size);
+            }
+            fos.close();
+            imageStream.close();
+
+            System.out.println("Downloaded " + url);
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
         }
-        File imagesDir = new File(distDir, imagesDirName);
-        if (!imagesDir.exists()) {
-            imagesDir.mkdirs();
+
+        return false;
+    }
+
+    private String getFileNameFromUrl(String url) {
+        return url.substring(url.lastIndexOf('/') + 1);
+    }
+
+    private void tryToTransferMediaFileData(String distDirName, JSONObject question, String mediaTagName, String targetDirName) {
+
+        File distDir = createDirIfNotExists(new File(distDirName));
+        File mediaDistDir = createDirIfNotExists(new File(distDir, targetDirName));
+
+        if (question.has(mediaTagName)) {
+            String url = question.getString(mediaTagName);
+            String fileName = getFileNameFromUrl(url);
+
+            if (downloadFile(url, new File(mediaDistDir, fileName))) {
+                question.put(mediaTagName, targetDirName + "/" + fileName);
+            }
         }
+    }
+
+    private void generateSubject1Package(JSONObject jsonObject, String distDirName) {
 
         JSONArray questions = jsonObject.getJSONArray("questions");
         JSONObject question = null;
-        byte[] buffer = new byte[2048];
+
         for (int i = 0; i < questions.length(); i++) {
             question = questions.getJSONObject(i);
-            if (question.has("image")) {
-                String imageUrl = question.getString("image");
-                String imageFileName = imageUrl.substring(imageUrl.lastIndexOf('/') + 1);
-                try {
-                    InputStream imageStream = new URL(imageUrl).openStream();
 
-                    File imageOutput = new File(imagesDir, imageFileName);
-                    if (!imageOutput.exists()) {
-                        imageOutput.createNewFile();
-                    }
-                    FileOutputStream fos = new FileOutputStream(imageOutput);
-                    int size = -1;
-                    while ((size = imageStream.read(buffer)) != -1) {
-                        fos.write(buffer, 0, size);
-                    }
-                    fos.close();
-                    imageStream.close();
+            System.out.println("title " + question.getString("title"));
 
-                    System.out.println("Downloaded " + imageUrl);
-
-                    question.put("image", imagesDirName + "/" + imageFileName);
-                } catch (IOException e) {
-                    e.printStackTrace();
-                }
-            }
+            tryToTransferMediaFileData(distDirName, question, "image", imagesDirName);
+            tryToTransferMediaFileData(distDirName, question, "video", videosDirName);
         }
 
-        File questionsJsonFile = new File(distDir, questionsFileName);
+
+        File questionsJsonFile = new File(createDirIfNotExists(new File(distDirName)), questionsFileName);
         try {
             if (!questionsJsonFile.exists()) {
                 questionsJsonFile.createNewFile();
@@ -95,5 +119,12 @@ public class JiakaoParser {
         }
 
         System.out.println("Completed");
+    }
+
+    private File createDirIfNotExists(File dir) {
+        if (!dir.exists()) {
+            dir.mkdirs();
+        }
+        return dir;
     }
 }

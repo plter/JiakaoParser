@@ -22,19 +22,28 @@
         questionsJsonOutput.hide();
     }
 
+    function retrieveCorrectAnswerTag(answer) {
+        return answer.substring(0, answer.indexOf(".")).trim();
+    }
+
     function retrieveQuestionInfo() {
         var titleSource = $(".shiti-content").html();
         var title = titleSource.substr(titleSource.indexOf(".") + 1).trim();
 
         var optionsContainer = $(".options-container");
         var options = optionsContainer.find("span");
+        var correctAnswers = optionsContainer.find(".dui span");
         var type = "Unknown";
         var a, b, c, d;
         a = options[0].innerHTML;
         b = options[1].innerHTML;
         switch (options.length) {
             case 4:
-                type = "single";
+                if (correctAnswers.length <= 1) {
+                    type = "single";
+                } else {
+                    type = "multi";
+                }
                 c = options[2].innerHTML;
                 d = options[3].innerHTML;
                 break;
@@ -42,14 +51,17 @@
                 type = 'judge';
                 break;
         }
-        var answer = optionsContainer.find(".dui").find("span").html();
-        answer = answer.substring(0, answer.indexOf(".")).trim();
+        var answer = "";
+        correctAnswers.each(function () {
+            answer += retrieveCorrectAnswerTag(this.innerHTML);
+        });
 
         var description = $(".explain-container *[data-item='explain-content']").html();
         if (description) {
             description = description.trim();
         }
         var image = $(".media-container img").attr("src");
+        var video = $(".media-container video").attr("src");
 
         var question = {
             type: type,
@@ -60,6 +72,7 @@
             d: d,
             answer: answer,
             image: image,
+            video: video,
             description: description
         };
 
@@ -85,8 +98,8 @@
             if (currentTimerId === -1) {
                 currentTimerId = setInterval(function () {
                     nextBtn.click();
-                    setTimeout(retrieveQuestionInfo, 100);
-                }, 300);
+                    setTimeout(retrieveQuestionInfo, 400);
+                }, 500);
             }
         });
         $(".btn-print-data").click(function () {
