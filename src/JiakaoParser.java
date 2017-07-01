@@ -73,7 +73,7 @@ public class JiakaoParser {
 
                     System.out.println("Downloaded " + imageUrl);
 
-                    question.put("image", imagesDir + "/" + imageFileName);
+                    question.put("image", imagesDirName + "/" + imageFileName);
                 } catch (IOException e) {
                     e.printStackTrace();
                 }
